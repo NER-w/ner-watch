@@ -9,13 +9,21 @@ manifest:
     - name: zephyrproject-rtos
       url-base: https://github.com/zephyrproject-rtos
 
+  defaults:
+    remote: zephyrproject-rtos
+
   projects:
     - name: zephyr
-      remote: zephyrproject-rtos
       revision: main
       import:
         name-allowlist:
-          - cmsis
-          - hal_nordic
-          - segger
-          - tinycrypt
+          - hal_espressif
+          - lvgl
+    - name: mcuboot
+      revision: main
+      path: bootloader/mcuboot
+    - name: gc9a01-driver
+      path: modules/drivers/gc9a01
+      url: https://github.com/amrithvenkat12/gc9a01a_zephyr_driver.git
+      revision: main
+      
