@@ -1,0 +1,70 @@
+/ {
+
+    chosen {
+        nerw,gesture = &paj7620;
+        zephyr,display = &gc9a01a;
+    };
+
+    pwmleds {
+        compatible = "pwm-leds";
+        bl_led: bl_led {
+            status = "okay";
+            pwms = <&ledc0 0 PWM_MSEC(4) PWM_POLARITY_NORMAL>;
+        };
+    };
+};
+
+&ledc0 {
+    pinctrl-0 = <&ledc0_default>;
+    pinctrl-names = "default";
+    #address-cells = <1>;
+    #size-cells = <0>;
+    channel0@0 {
+        reg = <0x00>;
+        timer = <0>;
+    };
+    status = "okay";
+};
+
+&i2c0 {
+    paj7620: paj7620@73 {
+        compatible = "pixart,paj7620";
+        reg = <0x73>;
+        int-gpios = <&gpio0 5 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+    };
+
+    /* apds9960: apds9960@56 { */
+    /*     compatible = "avago,apds9960g"; */
+    /*     reg = <0x56>; */
+    /*     int-gpios = <&gpio0 33 (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>; */
+    /* }; */
+};
+
+&spi2 {
+    gc9a01a: gc9a01a@0 {
+        status = "okay";
+        compatible = "waveshare,gc9a01a";
+        spi-max-frequency = <2000000>;
+        reg = <0>;
+
+        cmd-data-gpios = <&gpio0 26 GPIO_ACTIVE_HIGH>;
+        reset-gpios = <&gpio0 27 GPIO_ACTIVE_HIGH>;
+        backlight-gpios = <&bl_led>;
+
+        width = <240>;
+        height = <240>;
+
+        pixel-format = <0U>;
+        display-inversion;
+    };
+};
+
+&pinctrl {
+
+    ledc0_default: ledc0_default {
+        group1 {
+            pinmux = <LEDC_CH0_GPIO4>;
+            output-enable;
+        };
+    };
+};

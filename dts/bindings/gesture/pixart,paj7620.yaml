@@ -1,0 +1,13 @@
+description: |
+  PAJ7620 gesture sensor
+
+compatible: pixart,paj7620
+
+include: [base.yaml, i2c-device.yaml]
+
+properties:
+
+  int-gpios:
+    type: phandle-array
+    required: true
+    description: Interrupt pin

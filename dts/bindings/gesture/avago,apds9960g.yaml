@@ -1,0 +1,13 @@
+description: |
+  APDS9960 gesture sensor
+
+compatible: avago,apds9960g
+
+include: [base.yaml, i2c-device.yaml]
+
+properties:
+
+  int-gpios:
+    type: phandle-array
+    required: true
+    description: Interrupt pin
