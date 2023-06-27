@@ -18,7 +18,9 @@ manifest:
       import:
         name-allowlist:
           - hal_espressif
+          - mbedtls
           - lvgl
+          - fatfs
     - name: mcuboot
       revision: main
       path: bootloader/mcuboot

@@ -2,6 +2,7 @@
 
     chosen {
         nerw,gesture = &paj7620;
+        nerw,heart = &max30102;
         zephyr,display = &gc9a01a;
     };
 
@@ -12,6 +13,10 @@
             pwms = <&ledc0 0 PWM_MSEC(4) PWM_POLARITY_NORMAL>;
         };
     };
+};
+
+&wifi {
+    status = "okay";
 };
 
 &ledc0 {
@@ -28,9 +33,16 @@
 
 &i2c0 {
     paj7620: paj7620@73 {
+        status = "okay";
         compatible = "pixart,paj7620";
         reg = <0x73>;
         int-gpios = <&gpio0 5 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+    };
+
+    max30102: max30102@57 {
+        status = "okay";
+        compatible = "maxim,max30101";
+        reg = <0x57>;
     };
 
     /* apds9960: apds9960@56 { */
@@ -56,6 +68,20 @@
 
         pixel-format = <0U>;
         display-inversion;
+    };
+};
+
+&spi3 {
+    sdhc: sdhc@0 {
+        status = "okay";
+        compatible = "zephyr,sdhc-spi-slot";
+        spi-max-frequency = <400000>;
+        reg = <0x00>;
+
+        mmc {
+            compatible = "zephyr,sdmmc-disk";
+            
+        };
     };
 };
 

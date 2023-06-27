@@ -8,5 +8,7 @@ project(app LANGUAGES C)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS on)
 
-target_sources(app PRIVATE src/main.c src/list.c)
+target_include_directories(app PRIVATE inc)
+target_sources(app PRIVATE src/main.c)
 add_subdirectory(apps)
+add_subdirectory(subsys)
