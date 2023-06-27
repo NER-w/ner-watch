@@ -3,9 +3,13 @@
 #include <zephyr/kernel.h>
 #include <zephyr/init.h>
 
+#include <lvgl.h>
+
 struct app *app_list = NULL;
 size_t app_count = 0;
 size_t app_index = 0;
+
+lv_obj_t *app_select_screen = NULL;
 
 int app_list_init(void) {
     app_list = k_malloc(app_count * sizeof(struct app));
@@ -13,4 +17,3 @@ int app_list_init(void) {
 }
 
 SYS_INIT(app_list_init, APPLICATION, 2);
-

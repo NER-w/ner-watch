@@ -10,6 +10,7 @@
 #include <zephyr/toolchain.h>
 
 #include <zephyr/logging/log.h>
+
 LOG_MODULE_REGISTER(APP_NAME, CONFIG_LOG_DEFAULT_LEVEL);
 
 #include <lvgl.h>
@@ -29,14 +30,17 @@ LOG_MODULE_REGISTER(APP_NAME, CONFIG_LOG_DEFAULT_LEVEL);
 #define APP_INIT_(name) _CONCAT(name, _init)
 #define APP_INIT APP_INIT_(APP_NAME)
 
+#define APP_ICON_CREATE_(name) _CONCAT(name, _icon_create)
+#define APP_ICON_CREATE APP_ICON_CREATE_(APP_NAME)
+
 #ifndef APP_STACK_SIZE
-#define APP_STACK_SIZE 4096
+#define APP_STACK_SIZE 2048
 #endif
 #define APP_PRIORITY 7
 
 #define APP_NAME_STR STRINGIFY(APP_NAME)
 
-#include "app/list.h"
+#include <app/list.h>
 
 K_THREAD_STACK_DEFINE(APP_STACK, APP_STACK_SIZE);
 static struct k_thread APP_THREAD;
@@ -44,20 +48,41 @@ static struct k_thread APP_THREAD;
 static void setup(struct app *app);
 static void loop(struct app *app);
 
+static void icon_create(struct app *app);
+
+
+void APP_ICON_CREATE(struct app *app) {
+    static lv_style_t style;
+
+    lv_style_init(&style);
+    lv_style_set_radius(&style, 80);
+    
+    lv_style_set_bg_color(&style, lv_color_black());
+
+    lv_style_set_border_width(&style, 2);
+    lv_style_set_border_color(&style, lv_palette_lighten(LV_PALETTE_GREY, 1));
+
+    app->icon = lv_obj_create(app_select_screen);
+    lv_obj_set_size(app->icon, 160, 160);
+    lv_obj_add_style(app->icon, &style, 0);
+    icon_create(app);
+    printk(APP_NAME_STR " icon: %p\n", app->icon);
+}
+
 void APP_MAIN_FN(void *app_arg, void *arg1, void *arg2) {
     ARG_UNUSED(arg1); ARG_UNUSED(arg2);
     
-    struct app *app = (struct app *) app_arg;
+    struct app *app = (struct app *) app_arg;    
     app->screen = lv_obj_create(NULL);
+
     setup(app);
-    lv_scr_load(app->screen);
     lv_task_handler();
     
     while (-42) {
         if (app->screen != lv_scr_act())
             lv_scr_load(app->screen);
-        loop(app);
         lv_task_handler();
+        loop(app);
     }
 }
 
@@ -68,24 +93,26 @@ int APP_REGISTER(void) {
 }
 
 int APP_INIT(void) {
-    app_list[app_index].name = APP_NAME_STR;
-    app_list[app_index].thread = &APP_THREAD;
+    app_list[app_index].name        = APP_NAME_STR;
+    app_list[app_index].thread      = &APP_THREAD;
+    app_list[app_index].screen      = NULL;
+    app_list[app_index].icon_create = APP_ICON_CREATE;
 
-    int err;
-    err = k_thread_create(
+    k_thread_create(
         &APP_THREAD, APP_STACK,
         K_THREAD_STACK_SIZEOF(APP_STACK),
         APP_MAIN_FN, &app_list[app_index], NULL, NULL,
         APP_PRIORITY, 0, K_FOREVER);
-    if (err < 0) {
-        LOG_ERR("init: failed to create thread: %d: %s",
-                err,
-                strerror(-err)
-            );
-        return err;
-    }
+    /* if (err < 0) { */
+    /*     LOG_ERR("init: failed to create thread: %d: %s", */
+    /*             err, */
+    /*             strerror(-err) */
+    /*         ); */
+    /*     return err; */
+    /* } */
     app_index++;
     #ifdef CONFIG_THREAD_MONITOR
+    int err;
     err = k_thread_name_set(&APP_THREAD, APP_NAME_STR);
     if (err < 0) {
         LOG_ERR("init: failed to set name: %d: %s",

@@ -18,6 +18,7 @@ LOG_MODULE_REGISTER(app, CONFIG_LOG_DEFAULT_LEVEL);
 #include <app/drivers/gesture.h>
 #include <lvgl.h>
 
+#include <subsys/list.h>
 #include <app/list.h>
 
 #define EVENT_GESTURE_UP    BIT(0)
@@ -58,13 +59,13 @@ static void sleep_exit(void *o) {
 static void app_entry(void *o) {
     struct s_object *obj = (struct s_object *) o;
     
-    printk("App entry %d\n", obj->app_index);
     obj->app = &app_list[obj->app_index];
-    /* printk("App name: %s\n", app_list[app_ */
-    /* printk("0x%p\n", obj->app); */
-    /* printk("%s\n", obj->app->name); */
+    
+    printk("App entry %d\n", obj->app_index);
+    printk("%s\n", obj->app->name);
 
     k_thread_resume(obj->app->thread);
+    /* lv_scr_load(obj->app->screen); */
 }
 
 static void app_run(void *o) {
@@ -77,7 +78,6 @@ static void app_run(void *o) {
     } else if (events & EVENT_GESTURE_DOWN) {
         printk("App scroll down\n");
     } else {
-        
     }
 }
 
@@ -85,6 +85,21 @@ static void app_exit(void *o) {
     struct s_object *obj = (struct s_object *) o;
 
     k_thread_suspend(obj->app->thread);
+}
+
+static void select_update(size_t app_index) {
+    for (size_t i = 0; i < app_count; i++) {
+        lv_obj_align(app_list[i].icon, LV_ALIGN_CENTER, (i - app_index) * 180, 0);
+    }    
+}
+
+static void select_entry(void *o) {
+    struct s_object *obj = (struct s_object *) o;
+
+    lv_scr_load(app_select_screen);
+    select_update(obj->app_index);
+
+    lv_task_handler();
 }
 
 static void select_run(void *o) {
@@ -96,21 +111,26 @@ static void select_run(void *o) {
     } else if (events & EVENT_GESTURE_FROM) {
         smf_set_state(SMF_CTX(&s_obj), &app_states[APP]);
     } else if (events & EVENT_GESTURE_LEFT) {
-        printk("Selector swipe left\n");
-        obj->app_index++;
-        obj->app_index %= app_count;
-    } else if (events & EVENT_GESTURE_RIGHT) {
-        printk("Selector swipe right\n");
-        obj->app_index--;
-        obj->app_index %= app_count;
-    } else {
-    }    
+        if (obj->app_index == app_count - 1)
+            obj->app_index = 0;
+        else
+            obj->app_index++;
+    }
+    else if (events & EVENT_GESTURE_RIGHT) {
+        if (obj->app_index == 0)
+            obj->app_index = app_count - 1;
+        else
+            obj->app_index--;
+    }
+    select_update(obj->app_index);
+
+    lv_task_handler();
 }
 
 static const struct smf_state app_states[] = {
     [SLEEP]  = SMF_CREATE_STATE(sleep_entry, NULL, sleep_exit, NULL),
     [APP]    = SMF_CREATE_STATE(app_entry, app_run, app_exit, NULL),
-    [SELECT] = SMF_CREATE_STATE(NULL, select_run, NULL, NULL),
+    [SELECT] = SMF_CREATE_STATE(select_entry, select_run, NULL, NULL),
 };
 
 int main(void) {
@@ -122,19 +142,28 @@ int main(void) {
 		return 0;
 	}
 
+    LOG_INF("subsys list allocated: %s", subsys_list == NULL ? "false" : "true");
+    LOG_INF("subsys list size: %zu", subsys_count);
+
+    for (size_t i = 0; i < subsys_count; i++)
+        k_thread_start(subsys_list[i].thread);
+    for (size_t i = 0; i < subsys_count; i++)
+        k_thread_join(subsys_list[i].thread, K_FOREVER);
+
     LOG_INF("app list allocated: %s", app_list == NULL ? "false" : "true");
     LOG_INF("app list size: %zu", app_count);
 
-    /* struct app clock; */
+    app_select_screen = lv_obj_create(NULL);
+
     size_t clock_app_index = 0;
 
     for (size_t i = 0; i < app_count; i++) {
-        if (strncmp(app_list[i].name, "clock", 5) == 0) {
+        if (strncmp(app_list[i].name, "notify", 7) == 0) {
             printk("Clock app at index %zu\n", i);
             clock_app_index = i;
-            /* clock = app_list[i]; */
         }
 
+        app_list[i].icon_create(&app_list[i]);
         k_thread_start(app_list[i].thread);
         k_thread_suspend(app_list[i].thread);
     }
@@ -162,46 +191,7 @@ int main(void) {
         /* k_sleep(K_MSEC(100)); */
     }
 
-    /* k_thread_start(clock.thread); */
-
     return 0;
-    /* lv_scr_load(clock.screen); */
-
-	/* lv_task_handler(); */
-}
-
-void gesture_handler(const struct device *dev) {
-    enum gesture_type gesture = 0;
-    
-    gesture_get(dev, &gesture);
-    switch (gesture) {
-    case GESTURE_UP:
-        printk("Up\n");
-        k_event_post(&s_obj.smf_event, EVENT_GESTURE_UP);
-        break;
-    case GESTURE_DOWN:
-        printk("Down\n");        
-        k_event_post(&s_obj.smf_event, EVENT_GESTURE_DOWN);
-        break;
-    case GESTURE_LEFT:
-        printk("Left\n");
-        k_event_post(&s_obj.smf_event, EVENT_GESTURE_LEFT);
-        break;
-    case GESTURE_RIGHT:
-        printk("Right\n");
-        k_event_post(&s_obj.smf_event, EVENT_GESTURE_RIGHT);
-        break;
-    case GESTURE_FORWARD:
-        printk("To\n");
-        k_event_post(&s_obj.smf_event, EVENT_GESTURE_TO);
-        break;
-    case GESTURE_BACKWARD:
-        printk("From\n");
-        k_event_post(&s_obj.smf_event, EVENT_GESTURE_FROM);
-        break;
-    case GESTURE_NONE:
-        break;
-    }
 }
 
 K_THREAD_STACK_DEFINE(gesture_stack_area, 1024);
@@ -209,7 +199,7 @@ static struct k_thread gesture_data;
 
 /* threadA is a static thread that is spawned automatically */
 
-void gesture_reader(void *dummy1, void *dummy2, void *dummy3)
+int gesture_reader(void *dummy1, void *dummy2, void *dummy3)
 {
 	ARG_UNUSED(dummy1);
 	ARG_UNUSED(dummy2);
@@ -223,9 +213,38 @@ void gesture_reader(void *dummy1, void *dummy2, void *dummy3)
 		return 0;
 	}
 
-	while (1)
-	{
-		gesture_handler(gesture_dev);
+	while (1) {
+        enum gesture_type gesture = 0;
+    
+        gesture_get(gesture_dev, &gesture);
+        switch (gesture) {
+        case GESTURE_UP:
+            printk("Up\n");
+            k_event_post(&s_obj.smf_event, EVENT_GESTURE_UP);
+            break;
+        case GESTURE_DOWN:
+            printk("Down\n");        
+            k_event_post(&s_obj.smf_event, EVENT_GESTURE_DOWN);
+            break;
+        case GESTURE_LEFT:
+            printk("Left\n");
+            k_event_post(&s_obj.smf_event, EVENT_GESTURE_LEFT);
+            break;
+        case GESTURE_RIGHT:
+            printk("Right\n");
+            k_event_post(&s_obj.smf_event, EVENT_GESTURE_RIGHT);
+            break;
+        case GESTURE_FORWARD:
+            printk("To\n");
+            k_event_post(&s_obj.smf_event, EVENT_GESTURE_TO);
+            break;
+        case GESTURE_BACKWARD:
+            printk("From\n");
+            k_event_post(&s_obj.smf_event, EVENT_GESTURE_FROM);
+            break;
+        case GESTURE_NONE:
+            break;
+        }
 		k_msleep(100);
 	}
 
