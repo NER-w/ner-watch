@@ -158,7 +158,7 @@ int main(void) {
     size_t clock_app_index = 0;
 
     for (size_t i = 0; i < app_count; i++) {
-        if (strncmp(app_list[i].name, "notify", 7) == 0) {
+        if (strncmp(app_list[i].name, "clock", 5) == 0) {
             printk("Clock app at index %zu\n", i);
             clock_app_index = i;
         }
